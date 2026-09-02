@@ -477,3 +477,44 @@ async function fetchDoubanRecommends(
     throw new Error(`获取豆瓣推荐数据失败: ${(error as Error).message}`);
   }
 }
+
+/**
+ * 获取豆瓣条目详情（含剧情简介，用于首页幻灯片等场景）
+ * 服务端使用 unstable_cache 缓存爬取结果
+ */
+export async function getDoubanDetails(id: string): Promise<{
+  code: number;
+  message: string;
+  data?: {
+    id: string;
+    title: string;
+    poster: string;
+    rate: string;
+    year: string;
+    directors?: string[];
+    screenwriters?: string[];
+    cast?: string[];
+    genres?: string[];
+    countries?: string[];
+    languages?: string[];
+    episodes?: number;
+    episode_length?: number;
+    first_aired?: string;
+    plot_summary?: string;
+  };
+}> {
+  try {
+    const response = await fetch(`/api/douban/details?id=${id}`);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    return {
+      code: 500,
+      message: `获取豆瓣详情失败: ${(error as Error).message}`,
+    };
+  }
+}

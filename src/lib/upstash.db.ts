@@ -4,7 +4,14 @@ import { Redis } from '@upstash/redis';
 
 import { AdminConfig } from './admin.types';
 import { hashPassword, isHashed, verifyPassword } from './password';
-import { Favorite, IStorage, PlayRecord, SkipConfig } from './types';
+import {
+  ContentStat,
+  Favorite,
+  IStorage,
+  PlayRecord,
+  SkipConfig,
+  UserPlayStat,
+} from './types';
 
 // 搜索历史最大条数
 const SEARCH_HISTORY_LIMIT = 20;
@@ -193,9 +200,7 @@ export class UpstashRedisStorage implements IStorage {
   // 修改用户密码
   async changePassword(userName: string, newPassword: string): Promise<void> {
     const hashed = hashPassword(newPassword);
-    await withRetry(() =>
-      this.client.set(this.userPwdKey(userName), hashed)
-    );
+    await withRetry(() => this.client.set(this.userPwdKey(userName), hashed));
   }
 
   // 删除用户及其所有数据
@@ -257,7 +262,9 @@ export class UpstashRedisStorage implements IStorage {
   }
 
   async getAllUsers(): Promise<string[]> {
-    const members = await withRetry(() => this.client.smembers(this.usersSetKey()));
+    const members = await withRetry(() =>
+      this.client.smembers(this.usersSetKey())
+    );
     return ensureStringArray(members as any[]);
   }
 
@@ -341,14 +348,18 @@ export class UpstashRedisStorage implements IStorage {
 
   async migrateData(): Promise<void> {
     // 检查是否已迁移
-    const migrated = await withRetry(() => this.client.get(this.migrationKey()));
+    const migrated = await withRetry(() =>
+      this.client.get(this.migrationKey())
+    );
     if (migrated === 'done') return;
 
     console.log('开始数据迁移：扁平 key → Hash 结构...');
 
     try {
       // 迁移播放记录：u:*:pr:* → u:username:pr (Hash)
-      const prKeys: string[] = await withRetry(() => this.client.keys('u:*:pr:*'));
+      const prKeys: string[] = await withRetry(() =>
+        this.client.keys('u:*:pr:*')
+      );
       if (prKeys.length > 0) {
         const oldPrKeys = prKeys.filter((k) => {
           const parts = k.split(':');
@@ -373,7 +384,9 @@ export class UpstashRedisStorage implements IStorage {
       }
 
       // 迁移收藏：u:*:fav:* → u:username:fav (Hash)
-      const favKeys: string[] = await withRetry(() => this.client.keys('u:*:fav:*'));
+      const favKeys: string[] = await withRetry(() =>
+        this.client.keys('u:*:fav:*')
+      );
       if (favKeys.length > 0) {
         const oldFavKeys = favKeys.filter((k) => {
           const parts = k.split(':');
@@ -398,7 +411,9 @@ export class UpstashRedisStorage implements IStorage {
       }
 
       // 迁移 skipConfig：u:*:skip:* → u:username:skip (Hash)
-      const skipKeys: string[] = await withRetry(() => this.client.keys('u:*:skip:*'));
+      const skipKeys: string[] = await withRetry(() =>
+        this.client.keys('u:*:skip:*')
+      );
       if (skipKeys.length > 0) {
         const oldSkipKeys = skipKeys.filter((k) => {
           const parts = k.split(':');
@@ -423,9 +438,13 @@ export class UpstashRedisStorage implements IStorage {
       }
 
       // 迁移用户列表：从 KEYS u:*:pwd 构建 sys:users Set
-      const userSetExists = await withRetry(() => this.client.exists(this.usersSetKey()));
+      const userSetExists = await withRetry(() =>
+        this.client.exists(this.usersSetKey())
+      );
       if (!userSetExists) {
-        const pwdKeys: string[] = await withRetry(() => this.client.keys('u:*:pwd'));
+        const pwdKeys: string[] = await withRetry(() =>
+          this.client.keys('u:*:pwd')
+        );
         const userNames = pwdKeys
           .map((k) => {
             const match = k.match(/^u:(.+?):pwd$/);
@@ -433,7 +452,9 @@ export class UpstashRedisStorage implements IStorage {
           })
           .filter((u): u is string => typeof u === 'string');
         if (userNames.length > 0) {
-          await withRetry(() => this.client.sadd(this.usersSetKey(), userNames));
+          await withRetry(() =>
+            this.client.sadd(this.usersSetKey(), userNames)
+          );
           console.log(`迁移了 ${userNames.length} 个用户到 Set`);
         }
       }
@@ -452,13 +473,17 @@ export class UpstashRedisStorage implements IStorage {
   }
 
   async migratePasswords(): Promise<void> {
-    const migrated = await withRetry(() => this.client.get(this.pwdMigrationKey()));
+    const migrated = await withRetry(() =>
+      this.client.get(this.pwdMigrationKey())
+    );
     if (migrated === 'done') return;
 
     console.log('开始密码迁移：明文 → 加盐哈希...');
 
     try {
-      const pwdKeys: string[] = await withRetry(() => this.client.keys('u:*:pwd'));
+      const pwdKeys: string[] = await withRetry(() =>
+        this.client.keys('u:*:pwd')
+      );
       let count = 0;
 
       for (const key of pwdKeys) {
@@ -536,3 +561,252 @@ function getUpstashRedisClient(): Redis {
 
   return client;
 }
+
+// Upstash 存储的播放统计扩展（附加到 UpstashRedisStorage 原型上）
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const UpstashStatsExt = {
+  async readLoginStats(userName: string): Promise<{
+    loginCount: number;
+    firstLoginTime: number;
+    lastLoginTime: number;
+    lastLoginDate: number;
+  }> {
+    const self = this as any;
+    try {
+      const storedLoginStats = await withRetry(() =>
+        self.client.get(`user_login_stats:${userName}`)
+      );
+      if (storedLoginStats) {
+        const parsed =
+          typeof storedLoginStats === 'string'
+            ? JSON.parse(storedLoginStats)
+            : storedLoginStats;
+        return {
+          loginCount: parsed.loginCount || 0,
+          firstLoginTime: parsed.firstLoginTime || 0,
+          lastLoginTime: parsed.lastLoginTime || 0,
+          lastLoginDate: parsed.lastLoginDate || parsed.lastLoginTime || 0,
+        };
+      }
+    } catch (error) {
+      console.error(`获取用户 ${userName} 登入统计失败:`, error);
+    }
+    return {
+      loginCount: 0,
+      firstLoginTime: 0,
+      lastLoginTime: 0,
+      lastLoginDate: 0,
+    };
+  },
+
+  async getUserPlayStat(userName: string): Promise<UserPlayStat> {
+    const self = this as any;
+    try {
+      const playRecords = await self.getAllPlayRecords(userName);
+      const records = Object.values(playRecords) as PlayRecord[];
+
+      const loginStats = await UpstashStatsExt.readLoginStats.call(
+        this,
+        userName
+      );
+
+      if (records.length === 0) {
+        return {
+          username: userName,
+          totalWatchTime: 0,
+          totalPlays: 0,
+          lastPlayTime: 0,
+          recentRecords: [],
+          avgWatchTime: 0,
+          mostWatchedSource: '',
+          totalMovies: 0,
+          firstWatchDate: Date.now(),
+          lastUpdateTime: Date.now(),
+          loginCount: loginStats.loginCount,
+          firstLoginTime: loginStats.firstLoginTime,
+          lastLoginTime: loginStats.lastLoginTime,
+          lastLoginDate: loginStats.lastLoginDate,
+        };
+      }
+
+      const totalWatchTime = records.reduce(
+        (sum, record) => sum + (record.play_time || 0),
+        0
+      );
+      const totalPlays = records.length;
+      const lastPlayTime = Math.max(...records.map((r) => r.save_time || 0));
+      const totalMovies = new Set(
+        records.map((r) => `${r.title}_${r.source_name}_${r.year}`)
+      ).size;
+      const firstWatchDate = Math.min(
+        ...records.map((r) => r.save_time || Date.now())
+      );
+      const recentRecords = [...records]
+        .sort((a, b) => (b.save_time || 0) - (a.save_time || 0))
+        .slice(0, 10);
+      const avgWatchTime = totalPlays > 0 ? totalWatchTime / totalPlays : 0;
+
+      const sourceMap = new Map<string, number>();
+      records.forEach((record) => {
+        const sourceName = record.source_name || '未知来源';
+        sourceMap.set(sourceName, (sourceMap.get(sourceName) || 0) + 1);
+      });
+      const mostWatchedSource =
+        sourceMap.size > 0
+          ? Array.from(sourceMap.entries()).reduce((a, b) =>
+              a[1] > b[1] ? a : b
+            )[0]
+          : '';
+
+      return {
+        username: userName,
+        totalWatchTime,
+        totalPlays,
+        lastPlayTime,
+        recentRecords,
+        avgWatchTime,
+        mostWatchedSource,
+        totalMovies,
+        firstWatchDate,
+        lastUpdateTime: Date.now(),
+        loginCount: loginStats.loginCount,
+        firstLoginTime: loginStats.firstLoginTime,
+        lastLoginTime: loginStats.lastLoginTime,
+        lastLoginDate: loginStats.lastLoginDate,
+      };
+    } catch (error) {
+      console.error(`获取用户 ${userName} 播放统计失败:`, error);
+      return {
+        username: userName,
+        totalWatchTime: 0,
+        totalPlays: 0,
+        lastPlayTime: 0,
+        recentRecords: [],
+        avgWatchTime: 0,
+        mostWatchedSource: '',
+      };
+    }
+  },
+
+  async getContentStats(limit = 10): Promise<ContentStat[]> {
+    const self = this as any;
+    try {
+      const allUsers = await self.getAllUsers();
+      const contentMap = new Map<
+        string,
+        {
+          record: PlayRecord;
+          playCount: number;
+          totalWatchTime: number;
+          users: Set<string>;
+        }
+      >();
+
+      for (const username of allUsers) {
+        const playRecords = await self.getAllPlayRecords(username);
+        Object.entries(playRecords as Record<string, PlayRecord>).forEach(
+          ([key, record]) => {
+            if (!contentMap.has(key)) {
+              contentMap.set(key, {
+                record,
+                playCount: 0,
+                totalWatchTime: 0,
+                users: new Set(),
+              });
+            }
+            const content = contentMap.get(key)!;
+            content.playCount++;
+            content.totalWatchTime += record.play_time || 0;
+            content.users.add(username);
+          }
+        );
+      }
+
+      return Array.from(contentMap.entries())
+        .map(([key, data]) => {
+          const [source, id] = key.split('+');
+          return {
+            source,
+            id,
+            title: data.record.title,
+            source_name: data.record.source_name,
+            cover: data.record.cover,
+            year: data.record.year,
+            playCount: data.playCount,
+            totalWatchTime: data.totalWatchTime,
+            averageWatchTime:
+              data.playCount > 0 ? data.totalWatchTime / data.playCount : 0,
+            lastPlayed: data.record.save_time,
+            uniqueUsers: data.users.size,
+          };
+        })
+        .sort((a, b) => b.playCount - a.playCount)
+        .slice(0, limit);
+    } catch (error) {
+      console.error('获取内容统计失败:', error);
+      return [];
+    }
+  },
+
+  async updatePlayStatistics(
+    _userName: string,
+    _source: string,
+    _id: string,
+    _watchTime: number
+  ): Promise<void> {
+    const self = this as any;
+    try {
+      await withRetry(() => self.client.del('play_stats_summary'));
+    } catch (error) {
+      console.error('更新播放统计失败:', error);
+    }
+  },
+
+  async updateUserLoginStats(
+    userName: string,
+    loginTime: number,
+    isFirstLogin?: boolean
+  ): Promise<void> {
+    const self = this as any;
+    try {
+      const loginStatsKey = `user_login_stats:${userName}`;
+      const currentStats = await withRetry(() =>
+        self.client.get(loginStatsKey)
+      );
+      const loginStats = currentStats
+        ? typeof currentStats === 'string'
+          ? JSON.parse(currentStats)
+          : currentStats
+        : {
+            loginCount: 0,
+            firstLoginTime: null,
+            lastLoginTime: null,
+            lastLoginDate: null,
+          };
+
+      loginStats.loginCount = (loginStats.loginCount || 0) + 1;
+      loginStats.lastLoginTime = loginTime;
+      loginStats.lastLoginDate = loginTime;
+      if (isFirstLogin || !loginStats.firstLoginTime) {
+        loginStats.firstLoginTime = loginTime;
+      }
+
+      await withRetry(() =>
+        self.client.set(loginStatsKey, JSON.stringify(loginStats))
+      );
+      console.log(`用户 ${userName} 登入统计已更新`);
+    } catch (error) {
+      console.error(`更新用户 ${userName} 登入统计失败:`, error);
+      throw error;
+    }
+  },
+};
+
+// 将统计方法混入 UpstashRedisStorage
+for (const [methodName, methodFn] of Object.entries(UpstashStatsExt)) {
+  const proto = UpstashRedisStorage.prototype as any;
+  if (!proto[methodName]) {
+    proto[methodName] = methodFn;
+  }
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */

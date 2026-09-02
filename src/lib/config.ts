@@ -322,6 +322,20 @@ export function configSelfCheck(adminConfig: AdminConfig): AdminConfig {
   if (!adminConfig.UserConfig.Users || !Array.isArray(adminConfig.UserConfig.Users)) {
     adminConfig.UserConfig.Users = [];
   }
+  // 用户注册开关默认值
+  if (adminConfig.UserConfig.AllowRegister === undefined) {
+    adminConfig.UserConfig.AllowRegister = true;
+  }
+  // 非活跃用户自动清理默认值
+  if (adminConfig.UserConfig.AutoCleanupInactiveUsers === undefined) {
+    adminConfig.UserConfig.AutoCleanupInactiveUsers = false;
+  }
+  if (
+    adminConfig.UserConfig.InactiveUserDays === undefined ||
+    adminConfig.UserConfig.InactiveUserDays < 1
+  ) {
+    adminConfig.UserConfig.InactiveUserDays = 7;
+  }
   if (!adminConfig.SourceConfig || !Array.isArray(adminConfig.SourceConfig)) {
     adminConfig.SourceConfig = [];
   }
@@ -469,4 +483,9 @@ export async function getAvailableApiSites(user?: string): Promise<ApiSite[]> {
 
 export async function setCachedConfig(config: AdminConfig) {
   cachedConfig = config;
+}
+
+// 清除配置缓存，强制重新从数据库读取
+export function clearConfigCache(): void {
+  cachedConfig = null as any;
 }

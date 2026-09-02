@@ -794,8 +794,208 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
         </div>
       </div>
 
+      {/* 注册设置 - 仅站长可见 */}
+      {role === 'owner' && (
+        <div>
+          <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
+            注册设置
+          </h4>
+          <div className='p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 space-y-4'>
+            {/* 允许用户注册 */}
+            <div className='flex items-center justify-between'>
+              <div>
+                <div className='font-medium text-gray-900 dark:text-gray-100'>
+                  允许用户注册
+                </div>
+                <div className='text-sm text-gray-600 dark:text-gray-400'>
+                  控制是否允许新用户通过注册页面自行注册账户
+                </div>
+              </div>
+              <div className='flex items-center'>
+                <button
+                  type='button'
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${
+                    config.UserConfig.AllowRegister ? buttonStyles.toggleOn : buttonStyles.toggleOff
+                  }`}
+                  role='switch'
+                  aria-checked={config.UserConfig.AllowRegister}
+                  onClick={async () => {
+                    await withLoading('toggleAllowRegister', async () => {
+                      try {
+                        const response = await fetch('/api/admin/config', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            ...config,
+                            UserConfig: {
+                              ...config.UserConfig,
+                              AllowRegister: !config.UserConfig.AllowRegister,
+                            },
+                          }),
+                        });
 
+                        if (response.ok) {
+                          await refreshConfig();
+                          showAlert({
+                            type: 'success',
+                            title: '设置已更新',
+                            message: config.UserConfig.AllowRegister ? '已禁止用户注册' : '已允许用户注册',
+                            timer: 2000,
+                          });
+                        } else {
+                          throw new Error('更新配置失败');
+                        }
+                      } catch (err) {
+                        showAlert({
+                          type: 'error',
+                          title: '更新失败',
+                          message: err instanceof Error ? err.message : '未知错误',
+                        });
+                      }
+                    });
+                  }}
+                >
+                  <span
+                    aria-hidden='true'
+                    className={`pointer-events-none inline-block h-5 w-5 rounded-full ${buttonStyles.toggleThumb} shadow transform ring-0 transition duration-200 ease-in-out ${
+                      config.UserConfig.AllowRegister ? buttonStyles.toggleThumbOn : buttonStyles.toggleThumbOff
+                    }`}
+                  />
+                </button>
+                <span className='ml-3 text-sm font-medium text-gray-900 dark:text-gray-100'>
+                  {config.UserConfig.AllowRegister ? '开启' : '关闭'}
+                </span>
+              </div>
+            </div>
+            {/**/}
+            {/* 自动清理非活跃用户设置 */}
+            <div className='p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4'>
+              <div className='flex items-center justify-between'>
+                <div>
+                  <div className='font-medium text-gray-900 dark:text-gray-100'>
+                    自动清理非活跃用户
+                  </div>
+                  <div className='text-sm text-gray-600 dark:text-gray-400'>
+                    自动删除指定天数内未登录的非活跃用户账号
+                  </div>
+                </div>
+                <div className='flex items-center'>
+                  <button
+                    type='button'
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${
+                      config.UserConfig.AutoCleanupInactiveUsers ? buttonStyles.toggleOn : buttonStyles.toggleOff
+                    }`}
+                    role='switch'
+                    aria-checked={config.UserConfig.AutoCleanupInactiveUsers}
+                    onClick={async () => {
+                      await withLoading('toggleAutoCleanup', async () => {
+                        try {
+                          const response = await fetch('/api/admin/config', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              ...config,
+                              UserConfig: {
+                                ...config.UserConfig,
+                                AutoCleanupInactiveUsers: !config.UserConfig.AutoCleanupInactiveUsers,
+                              },
+                            }),
+                          });
 
+                          if (response.ok) {
+                            await refreshConfig();
+                            showAlert({
+                              type: 'success',
+                              title: '设置已更新',
+                              message: config.UserConfig.AutoCleanupInactiveUsers ? '已禁用自动清理' : '已启用自动清理',
+                              timer: 2000,
+                            });
+                          } else {
+                            throw new Error('更新失败');
+                          }
+                        } catch (err) {
+                          showAlert({
+                            type: 'error',
+                            title: '更新失败',
+                            message: err instanceof Error ? err.message : '未知错误',
+                          });
+                        }
+                      });
+                    }}
+                  >
+                    <span
+                      aria-hidden='true'
+                      className={`pointer-events-none inline-block h-5 w-5 rounded-full ${buttonStyles.toggleThumb} shadow transform ring-0 transition duration-200 ease-in-out ${
+                        config.UserConfig.AutoCleanupInactiveUsers ? buttonStyles.toggleThumbOn : buttonStyles.toggleThumbOff
+                      }`}
+                    />
+                  </button>
+                  <span className='ml-3 text-sm font-medium text-gray-900 dark:text-gray-100'>
+                    {config.UserConfig.AutoCleanupInactiveUsers ? '开启' : '关闭'}
+                  </span>
+                </div>
+              </div>
+              </div>
+
+              {/* 天数设置 */}
+              <div className='flex items-center space-x-3'>
+                <label className='text-sm font-medium text-gray-700 dark:text-gray-300'>
+                  保留天数：
+                </label>
+                <input
+                  type='number'
+                  min='1'
+                  max='365'
+                  defaultValue={config.UserConfig.InactiveUserDays || 7}
+                  onBlur={async (e) => {
+                    const days = parseInt(e.target.value) || 7;
+                    if (days === (config.UserConfig.InactiveUserDays || 7)) {
+                      return; // 没有变化，不需要保存
+                    }
+
+                    await withLoading('updateInactiveDays', async () => {
+                      try {
+                        const response = await fetch('/api/admin/config', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            ...config,
+                            UserConfig: {
+                              ...config.UserConfig,
+                              InactiveUserDays: days,
+                            },
+                          }),
+                        });
+
+                        if (response.ok) {
+                          await refreshConfig();
+                          showAlert({
+                            type: 'success',
+                            title: '设置已更新',
+                            message: `保留天数已设置为${days}天`,
+                            timer: 2000,
+                          });
+                        } else {
+                          throw new Error('更新失败');
+                        }
+                      } catch (err) {
+                        showAlert({
+                          type: 'error',
+                          title: '更新失败',
+                          message: err instanceof Error ? err.message : '未知错误',
+                        });
+                      }
+                    });
+                  }}
+                  className='w-20 px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                />
+                <span className='text-sm text-gray-600 dark:text-gray-400'>
+                  天（最后登入超过此天数的用户将被自动删除）
+                </span>
+              </div>
+            </div>
+            </div>
+            )}
       {/* 用户组管理 */}
       <div>
         <div className='flex items-center justify-between mb-3'>

@@ -12,6 +12,7 @@ export interface BangumiCalendarData {
       score: number;
     };
     air_date: string;
+    summary?: string;
     images: {
       large: string;
       common: string;

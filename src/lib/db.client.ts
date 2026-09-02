@@ -40,6 +40,8 @@ export interface PlayRecord {
   total_time: number; // 总进度（秒）
   save_time: number; // 记录保存时间（时间戳）
   search_title?: string; // 搜索时使用的标题
+  remarks?: string; // 源站备注（更新至XX集等）
+  original_episodes?: number; // 首次观看时的原始集数
 }
 
 // ---- 收藏类型 ----
@@ -1358,7 +1360,7 @@ export function subscribeToDataUpdates<T>(
   callback: (data: T) => void
 ): () => void {
   if (typeof window === 'undefined') {
-    return () => { };
+    return () => {};
   }
 
   const handleUpdate = (event: CustomEvent) => {

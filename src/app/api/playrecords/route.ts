@@ -91,12 +91,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 获取现有播放记录以保持原始集数
+    const existingRecord = await db.getPlayRecord(
+      authInfo.username,
+      source,
+      id
+    );
+
+    // 保持首次观看时的原始集数（播放统计的"追更"功能依赖此字段）
+    let originalEpisodes: number;
+    if (
+      record.original_episodes !== undefined &&
+      record.original_episodes !== null
+    ) {
+      // 客户端已经设置了 original_episodes，信任它
+      originalEpisodes = record.original_episodes;
+    } else {
+      // 客户端没有提供，使用数据库中的值或当前 total_episodes
+      originalEpisodes =
+        existingRecord?.original_episodes ||
+        existingRecord?.total_episodes ||
+        record.total_episodes;
+    }
+
     const finalRecord = {
       ...record,
       save_time: record.save_time ?? Date.now(),
+      original_episodes: originalEpisodes,
     } as PlayRecord;
 
     await db.savePlayRecord(authInfo.username, source, id, finalRecord);
+
+    // 更新播放统计（如果存储类型支持）
+    if (db.isStatsSupported()) {
+      await db.updatePlayStatistics(
+        authInfo.username,
+        source,
+        id,
+        finalRecord.play_time
+      );
+    }
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {

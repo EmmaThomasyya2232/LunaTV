@@ -12,6 +12,95 @@ export interface PlayRecord {
   total_time: number; // 总进度（秒）
   save_time: number; // 记录保存时间（时间戳）
   search_title: string; // 搜索时使用的标题
+  original_episodes?: number; // 首次观看时的原始集数
+}
+
+// 用户播放统计数据结构
+export interface UserPlayStat {
+  username: string; // 用户名
+  totalWatchTime: number; // 总观看时间（秒）
+  totalPlays: number; // 总播放次数
+  lastPlayTime: number; // 最后播放时间戳
+  recentRecords: PlayRecord[]; // 最近播放记录（最多10条）
+  avgWatchTime: number; // 平均每次观看时长
+  mostWatchedSource: string; // 最常观看的来源
+
+  // 高级统计字段
+  totalMovies?: number; // 观看影片总数（去重）
+  firstWatchDate?: number; // 首次观看时间戳
+  lastUpdateTime?: number; // 最后更新时间戳
+  createdAt?: number; // 注册时间戳
+  loginDays?: number; // 累计登录天数
+  lastLoginDate?: number; // 最后登录时间
+  lastLoginTime?: number; // 最后登入时间戳
+  firstLoginTime?: number; // 首次登入时间戳
+  loginCount?: number; // 登入次数
+  activeStreak?: number; // 连续活跃天数
+  continuousLoginDays?: number; // 连续登录天数
+}
+
+// 全站播放统计数据结构
+export interface PlayStatsResult {
+  totalUsers: number; // 总用户数
+  totalWatchTime: number; // 全站总观看时间
+  totalPlays: number; // 全站总播放次数
+  avgWatchTimePerUser: number; // 用户平均观看时长
+  avgPlaysPerUser: number; // 用户平均播放次数
+  userStats: Array<{
+    username: string;
+    totalWatchTime: number;
+    totalPlays: number;
+    lastPlayTime: number;
+    recentRecords: PlayRecord[];
+    avgWatchTime: number;
+    mostWatchedSource: string;
+    registrationDays: number; // 注册天数
+    lastLoginTime: number; // 最后登录时间
+    loginCount: number; // 登入次数
+    createdAt: number; // 用户创建时间
+  }>; // 每个用户的统计
+  topSources: Array<{
+    // 热门来源统计（前5名）
+    source: string;
+    count: number;
+  }>;
+  dailyStats: Array<{
+    // 近7天每日统计
+    date: string;
+    watchTime: number;
+    plays: number;
+  }>;
+  // 用户注册统计
+  registrationStats: {
+    todayNewUsers: number; // 今日新增用户
+    totalRegisteredUsers: number; // 总注册用户数
+    registrationTrend: Array<{
+      // 近7天注册趋势
+      date: string;
+      newUsers: number;
+    }>;
+  };
+  // 用户活跃度统计
+  activeUsers: {
+    daily: number; // 日活跃用户数
+    weekly: number; // 周活跃用户数
+    monthly: number; // 月活跃用户数
+  };
+}
+
+// 内容热度统计数据结构
+export interface ContentStat {
+  source: string;
+  id: string;
+  title: string;
+  source_name: string;
+  cover: string;
+  year: string;
+  playCount: number; // 播放次数
+  totalWatchTime: number; // 总观看时长
+  averageWatchTime: number; // 平均观看时长
+  lastPlayed: number; // 最后播放时间
+  uniqueUsers: number; // 观看用户数
 }
 
 // 收藏数据结构
@@ -116,6 +205,18 @@ export interface DoubanItem {
   poster: string;
   rate: string;
   year: string;
+  // 源浏览器详情弹窗使用的扩展字段（可选）
+  directors?: string[]; // 导演
+  screenwriters?: string[]; // 编剧
+  cast?: string[]; // 主演
+  genres?: string[]; // 类型
+  countries?: string[]; // 制片国家/地区
+  languages?: string[]; // 语言
+  first_aired?: string; // 首播日期
+  episodes?: number; // 集数
+  episode_length?: number; // 单集时长
+  movie_duration?: number; // 电影时长
+  plot_summary?: string; // 剧情简介
 }
 
 export interface DoubanResult {

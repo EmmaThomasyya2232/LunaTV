@@ -17,11 +17,12 @@ import {
   getAllPlayRecords,
   subscribeToDataUpdates,
 } from '@/lib/db.client';
-import { getDoubanCategories } from '@/lib/douban.client';
+import { getDoubanCategories, getDoubanDetails } from '@/lib/douban.client';
 import { DoubanItem } from '@/lib/types';
 
 import CapsuleSwitch from '@/components/CapsuleSwitch';
 import ContinueWatching from '@/components/ContinueWatching';
+import HeroBanner from '@/components/HeroBanner';
 import PageLayout from '@/components/PageLayout';
 import ScrollableRow from '@/components/ScrollableRow';
 import { useSite } from '@/components/SiteProvider';
@@ -87,13 +88,87 @@ function HomeClient() {
           ]);
 
         if (moviesRes.status === 'fulfilled' && moviesRes.value.code === 200) {
-          setHotMovies(moviesRes.value.list);
+          const movies = moviesRes.value.list;
+          setHotMovies(movies);
+
+          // 性能优化：使用 requestIdleCallback 延迟加载详情（用于幻灯片简介）
+          const loadMovieDetails = () => {
+            Promise.all(
+              movies.slice(0, 2).map(async (movie) => {
+                try {
+                  const detailsRes = await getDoubanDetails(movie.id);
+                  if (
+                    detailsRes.code === 200 &&
+                    detailsRes.data?.plot_summary
+                  ) {
+                    return {
+                      id: movie.id,
+                      plot_summary: detailsRes.data.plot_summary,
+                    };
+                  }
+                } catch (error) {
+                  console.warn(`获取电影 ${movie.id} 详情失败:`, error);
+                }
+                return null;
+              })
+            ).then((results) => {
+              setHotMovies((prev) =>
+                prev.map((m) => {
+                  const detail = results.find((r) => r?.id === m.id);
+                  return detail ? { ...m, plot_summary: detail.plot_summary } : m;
+                })
+              );
+            });
+          };
+
+          if ('requestIdleCallback' in window) {
+            requestIdleCallback(loadMovieDetails, { timeout: 2000 });
+          } else {
+            setTimeout(loadMovieDetails, 1000);
+          }
         } else if (moviesRes.status === 'rejected') {
           console.error('获取热门电影失败:', moviesRes.reason);
         }
 
         if (tvShowsRes.status === 'fulfilled' && tvShowsRes.value.code === 200) {
-          setHotTvShows(tvShowsRes.value.list);
+          const tvShows = tvShowsRes.value.list;
+          setHotTvShows(tvShows);
+
+          // 性能优化：使用 requestIdleCallback 延迟加载详情（用于幻灯片简介）
+          const loadTvDetails = () => {
+            Promise.all(
+              tvShows.slice(0, 2).map(async (show) => {
+                try {
+                  const detailsRes = await getDoubanDetails(show.id);
+                  if (
+                    detailsRes.code === 200 &&
+                    detailsRes.data?.plot_summary
+                  ) {
+                    return {
+                      id: show.id,
+                      plot_summary: detailsRes.data.plot_summary,
+                    };
+                  }
+                } catch (error) {
+                  console.warn(`获取剧集 ${show.id} 详情失败:`, error);
+                }
+                return null;
+              })
+            ).then((results) => {
+              setHotTvShows((prev) =>
+                prev.map((s) => {
+                  const detail = results.find((r) => r?.id === s.id);
+                  return detail ? { ...s, plot_summary: detail.plot_summary } : s;
+                })
+              );
+            });
+          };
+
+          if ('requestIdleCallback' in window) {
+            requestIdleCallback(loadTvDetails, { timeout: 2000 });
+          } else {
+            setTimeout(loadTvDetails, 1000);
+          }
         } else if (tvShowsRes.status === 'rejected') {
           console.error('获取热门剧集失败:', tvShowsRes.reason);
         }
@@ -102,7 +177,39 @@ function HomeClient() {
           varietyShowsRes.status === 'fulfilled' &&
           varietyShowsRes.value.code === 200
         ) {
-          setHotVarietyShows(varietyShowsRes.value.list);
+          const varietyShows = varietyShowsRes.value.list;
+          setHotVarietyShows(varietyShows);
+
+          // 性能优化：使用 requestIdleCallback 延迟加载详情（用于幻灯片简介）
+          if (varietyShows.length > 0) {
+            const loadVarietyDetails = () => {
+              const show = varietyShows[0];
+              getDoubanDetails(show.id)
+                .then((detailsRes) => {
+                  if (
+                    detailsRes.code === 200 &&
+                    detailsRes.data?.plot_summary
+                  ) {
+                    setHotVarietyShows((prev) =>
+                      prev.map((s) =>
+                        s.id === show.id
+                          ? { ...s, plot_summary: detailsRes.data!.plot_summary }
+                          : s
+                      )
+                    );
+                  }
+                })
+                .catch((error) => {
+                  console.warn(`获取综艺 ${show.id} 详情失败:`, error);
+                });
+            };
+
+            if ('requestIdleCallback' in window) {
+              requestIdleCallback(loadVarietyDetails, { timeout: 2000 });
+            } else {
+              setTimeout(loadVarietyDetails, 1000);
+            }
+          }
         } else if (varietyShowsRes.status === 'rejected') {
           console.error('获取热门综艺失败:', varietyShowsRes.reason);
         }
@@ -237,6 +344,87 @@ function HomeClient() {
           ) : (
             // 首页视图
             <>
+              {/* 热播幻灯片轮播 */}
+              {!loading &&
+                (hotMovies.length > 0 ||
+                  hotTvShows.length > 0 ||
+                  hotVarietyShows.length > 0) && (
+                  <section className='mb-8'>
+                    <HeroBanner
+                      items={[
+                        // 豆瓣电影
+                        ...hotMovies.slice(0, 2).map((movie) => ({
+                          id: movie.id,
+                          title: movie.title,
+                          poster: movie.poster,
+                          description: movie.plot_summary,
+                          year: movie.year,
+                          rate: movie.rate,
+                          douban_id: Number(movie.id),
+                          type: 'movie',
+                        })),
+                        // 豆瓣电视剧
+                        ...hotTvShows.slice(0, 2).map((show) => ({
+                          id: show.id,
+                          title: show.title,
+                          poster: show.poster,
+                          description: show.plot_summary,
+                          year: show.year,
+                          rate: show.rate,
+                          douban_id: Number(show.id),
+                          type: 'tv',
+                        })),
+                        // 豆瓣综艺
+                        ...hotVarietyShows.slice(0, 1).map((show) => ({
+                          id: show.id,
+                          title: show.title,
+                          poster: show.poster,
+                          description: show.plot_summary,
+                          year: show.year,
+                          rate: show.rate,
+                          douban_id: Number(show.id),
+                          type: 'variety',
+                        })),
+                        // 番剧（来自 bangumi，取今日更新的第一部）
+                        ...(() => {
+                          const today = new Date();
+                          const weekdays = [
+                            'Sun',
+                            'Mon',
+                            'Tue',
+                            'Wed',
+                            'Thu',
+                            'Fri',
+                            'Sat',
+                          ];
+                          const currentWeekday = weekdays[today.getDay()];
+                          const todayAnimes =
+                            bangumiCalendarData.find(
+                              (item) => item.weekday.en === currentWeekday
+                            )?.items || [];
+                          return todayAnimes.slice(0, 1).map((anime) => ({
+                            id: anime.id,
+                            title: anime.name_cn || anime.name,
+                            poster:
+                              anime.images?.large ||
+                              anime.images?.common ||
+                              anime.images?.medium ||
+                              '/placeholder-poster.jpg',
+                            description: anime.summary,
+                            year: anime.air_date?.split('-')?.[0] || '',
+                            rate: anime.rating?.score?.toFixed(1) || '',
+                            douban_id: anime.id,
+                            type: 'anime',
+                          }));
+                        })(),
+                      ]}
+                      autoPlayInterval={5000}
+                      showControls={true}
+                      showIndicators={true}
+                    />
+                  </section>
+                )}
+
               {/* 继续观看 */}
               <ContinueWatching />
 

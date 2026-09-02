@@ -41,6 +41,7 @@ async function cronJob() {
   await refreshConfig();
   await refreshAllLiveChannels();
   await refreshRecordAndFavorites();
+  await cleanupInactiveUsers();
 }
 
 async function refreshAllLiveChannels() {
@@ -276,5 +277,67 @@ async function refreshRecordAndFavorites() {
     console.log('刷新播放记录/收藏任务完成');
   } catch (err) {
     console.error('刷新播放记录/收藏任务启动失败', err);
+  }
+}
+
+// 清理不活跃用户
+async function cleanupInactiveUsers() {
+  try {
+    const config = await getConfig();
+    if (!config.UserConfig?.AutoCleanupInactiveUsers) {
+      console.log('跳过不活跃用户清理：功能未启用');
+      return;
+    }
+
+    const inactiveDays = config.UserConfig?.InactiveUserDays || 7;
+    const cutoffTime = Date.now() - inactiveDays * 24 * 60 * 60 * 1000;
+
+    console.log(`开始清理不活跃用户（超过 ${inactiveDays} 天未登录）...`);
+
+    const users = await db.getAllUsers();
+    const ownerUsername = process.env.USERNAME;
+    let deletedCount = 0;
+
+    for (const username of users) {
+      // 跳过管理员/所有者
+      if (username === ownerUsername) continue;
+      const userEntry = config.UserConfig.Users.find(
+        (u) => u.username === username
+      );
+      if (userEntry?.role === 'admin' || userEntry?.role === 'owner') continue;
+
+      try {
+        // 获取用户登入统计
+        const userPlayStat = await db.getUserPlayStat(username);
+        const lastLoginTime = userPlayStat.lastLoginTime || 0;
+
+        // 如果从未登录过，使用注册时间判断
+        if (lastLoginTime === 0) {
+          const createdAt = userEntry?.createdAt || 0;
+          if (createdAt > 0 && createdAt < cutoffTime) {
+            await db.deleteUser(username);
+            deletedCount++;
+            console.log(
+              `清理未登录用户: ${username} (注册于 ${new Date(createdAt).toISOString()})`
+            );
+          }
+          continue;
+        }
+
+        if (lastLoginTime < cutoffTime) {
+          await db.deleteUser(username);
+          deletedCount++;
+          console.log(
+            `清理不活跃用户: ${username} (最后登录: ${new Date(lastLoginTime).toISOString()})`
+          );
+        }
+      } catch (err) {
+        console.error(`检查用户 ${username} 活跃状态失败:`, err);
+      }
+    }
+
+    console.log(`不活跃用户清理完成: 共删除 ${deletedCount} 个用户`);
+  } catch (err) {
+    console.error('清理不活跃用户失败:', err);
   }
 }

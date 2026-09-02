@@ -3,7 +3,14 @@
 import { AdminConfig } from './admin.types';
 import { KvrocksStorage } from './kvrocks.db';
 import { RedisStorage } from './redis.db';
-import { Favorite, IStorage, PlayRecord, SkipConfig } from './types';
+import {
+  ContentStat,
+  Favorite,
+  IStorage,
+  PlayRecord,
+  SkipConfig,
+  UserPlayStat,
+} from './types';
 import { UpstashRedisStorage } from './upstash.db';
 
 // storage type 常量: 'localstorage' | 'redis' | 'upstash'，默认 'localstorage'
@@ -54,14 +61,17 @@ export class DbManager {
     this.storage = getStorage();
     // 启动时自动触发数据迁移（异步，不阻塞构造）
     if (this.storage && typeof this.storage.migrateData === 'function') {
-      this.migrationPromise = this.storage.migrateData().then(async () => {
-        // 数据结构迁移完成后，执行密码哈希迁移
-        if (typeof this.storage.migratePasswords === 'function') {
-          await this.storage.migratePasswords();
-        }
-      }).catch((err) => {
-        console.error('数据迁移异常:', err);
-      });
+      this.migrationPromise = this.storage
+        .migrateData()
+        .then(async () => {
+          // 数据结构迁移完成后，执行密码哈希迁移
+          if (typeof this.storage.migratePasswords === 'function') {
+            await this.storage.migratePasswords();
+          }
+        })
+        .catch((err) => {
+          console.error('数据迁移异常:', err);
+        });
     }
   }
 
@@ -268,6 +278,69 @@ export class DbManager {
     } else {
       throw new Error('存储类型不支持清空数据操作');
     }
+  }
+
+  // ---------- 播放统计 ----------
+  async getUserPlayStat(userName: string): Promise<UserPlayStat> {
+    if (typeof (this.storage as any).getUserPlayStat === 'function') {
+      return (this.storage as any).getUserPlayStat(userName);
+    }
+
+    // 如果存储不支持统计功能，返回默认值
+    return {
+      username: userName,
+      totalWatchTime: 0,
+      totalPlays: 0,
+      lastPlayTime: 0,
+      recentRecords: [],
+      avgWatchTime: 0,
+      mostWatchedSource: '',
+    };
+  }
+
+  async getContentStats(limit = 10): Promise<ContentStat[]> {
+    if (typeof (this.storage as any).getContentStats === 'function') {
+      return (this.storage as any).getContentStats(limit);
+    }
+
+    // 如果存储不支持统计功能，返回空数组
+    return [];
+  }
+
+  async updatePlayStatistics(
+    _userName: string,
+    _source: string,
+    _id: string,
+    _watchTime: number
+  ): Promise<void> {
+    if (typeof (this.storage as any).updatePlayStatistics === 'function') {
+      await (this.storage as any).updatePlayStatistics(
+        _userName,
+        _source,
+        _id,
+        _watchTime
+      );
+    }
+  }
+
+  async updateUserLoginStats(
+    userName: string,
+    loginTime: number,
+    isFirstLogin?: boolean
+  ): Promise<void> {
+    if (typeof (this.storage as any).updateUserLoginStats === 'function') {
+      await (this.storage as any).updateUserLoginStats(
+        userName,
+        loginTime,
+        isFirstLogin
+      );
+    }
+  }
+
+  // 检查存储类型是否支持统计功能
+  isStatsSupported(): boolean {
+    const storageType = process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage';
+    return storageType !== 'localstorage';
   }
 }
 

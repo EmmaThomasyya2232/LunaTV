@@ -157,6 +157,9 @@ export async function POST(req: NextRequest) {
       clearConfigCache();
 
       // 注册成功后自动登录
+      // 注意：Cookie 名必须是 'auth'，与 login 接口和 middleware 保持一致。
+      // 之前误写为 'user_auth'，导致注册后自动登录失效，
+      // 用户跳转首页时被中间件弹回登录页。
       const storageType = process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage';
       const response = NextResponse.json({
         ok: true,
@@ -173,7 +176,7 @@ export async function POST(req: NextRequest) {
       const expires = new Date();
       expires.setDate(expires.getDate() + 7); // 7天过期
 
-      response.cookies.set('user_auth', cookieValue, {
+      response.cookies.set('auth', cookieValue, {
         path: '/',
         expires,
         sameSite: 'lax',

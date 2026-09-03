@@ -2,15 +2,14 @@
 
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 
 import { useSite } from '@/components/SiteProvider';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
 function LoginPageClient() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
@@ -61,7 +60,11 @@ function LoginPageClient() {
         }
 
         const redirect = searchParams.get('redirect') || '/';
-        router.replace(redirect);
+        // 使用整页跳转而非 router.replace：
+        // 登录接口刚设置了认证 Cookie，SPA 客户端路由缓存可能导致
+        // 跳转后仍停留在登录页（表现为“登录没反应”，刷新后才能进入），
+        // 整页跳转确保新 Cookie 生效并重新执行中间件。
+        window.location.replace(redirect);
       } else if (res.status === 401) {
         setError('密码错误');
       } else {

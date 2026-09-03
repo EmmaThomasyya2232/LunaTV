@@ -2,10 +2,9 @@
 
 'use client';
 
-import { AlertCircle, CheckCircle, User, Lock, UserPlus, Shield } from 'lucide-react';
+import { AlertCircle, CheckCircle, Lock, Shield,User, UserPlus } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
-
 
 import { useSite } from '@/components/SiteProvider';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -102,7 +101,11 @@ function RegisterPageClient() {
 
         setTimeout(() => {
           const redirect = searchParams.get('redirect') || '/';
-          router.replace(redirect);
+          // 使用整页跳转而非 router.replace：
+          // 注册接口刚设置了认证 Cookie，SPA 客户端路由缓存可能导致
+          // 中间件认证状态不同步（表现为跳转后被弹回登录页），
+          // 整页跳转确保新 Cookie 生效并重新执行中间件。
+          window.location.replace(redirect);
         }, delay);
       } else {
         const data = await res.json();

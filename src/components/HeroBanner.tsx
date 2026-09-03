@@ -4,7 +4,7 @@
 import { ChevronLeft, ChevronRight, Info, Play } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface BannerItem {
   id: string | number;
@@ -33,7 +33,12 @@ export default function HeroBanner({
 }: HeroBannerProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
+  // 过渡锁使用 ref 而非 state：
+  // state 会因闭包过期导致自动轮播卡死——切换幻灯片时 effect 重建的
+  // setInterval 捕获的是过渡中的 isTransitioning=true（state 不在依赖里，
+  // 复位后闭包不会更新），此后每次触发 handleNext 都被误判拦截，
+  // 表现为轮播转到第二页后永久停止。ref 可避免此问题。
+  const isTransitioningRef = useRef(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
@@ -56,35 +61,46 @@ export default function HeroBanner({
   }, [items]);
 
   // 自动轮播
+  // 注意：不要依赖 currentIndex，否则每次切换都会重建定时器；
+  // 直接使用函数式更新即可，ref 过渡锁防止与手动操作冲突
   useEffect(() => {
     if (!autoPlayInterval || isHovered || items.length <= 1) return;
 
     const interval = setInterval(() => {
-      handleNext();
+      if (isTransitioningRef.current) return;
+      isTransitioningRef.current = true;
+      setCurrentIndex((prev) => (prev + 1) % items.length);
+      setTimeout(() => {
+        isTransitioningRef.current = false;
+      }, 500);
     }, autoPlayInterval);
 
     return () => clearInterval(interval);
-  }, [currentIndex, isHovered, autoPlayInterval, items.length]);
+  }, [isHovered, autoPlayInterval, items.length]);
+
+  const beginTransition = () => {
+    isTransitioningRef.current = true;
+    setTimeout(() => {
+      isTransitioningRef.current = false;
+    }, 500);
+  };
 
   const handleNext = () => {
-    if (isTransitioning) return;
-    setIsTransitioning(true);
+    if (isTransitioningRef.current) return;
+    beginTransition();
     setCurrentIndex((prev) => (prev + 1) % items.length);
-    setTimeout(() => setIsTransitioning(false), 500);
   };
 
   const handlePrev = () => {
-    if (isTransitioning) return;
-    setIsTransitioning(true);
+    if (isTransitioningRef.current) return;
+    beginTransition();
     setCurrentIndex((prev) => (prev - 1 + items.length) % items.length);
-    setTimeout(() => setIsTransitioning(false), 500);
   };
 
   const handleIndicatorClick = (index: number) => {
-    if (isTransitioning || index === currentIndex) return;
-    setIsTransitioning(true);
+    if (isTransitioningRef.current || index === currentIndex) return;
+    beginTransition();
     setCurrentIndex(index);
-    setTimeout(() => setIsTransitioning(false), 500);
   };
 
   // 触摸手势处理

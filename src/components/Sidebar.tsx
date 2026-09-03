@@ -9,6 +9,7 @@ import {
   Globe,
   Home,
   Menu,
+  Monitor,
   Radio,
   Search,
   Star,
@@ -160,6 +161,11 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
       icon: Clover,
       label: '综艺',
       href: '/douban?type=show',
+    },
+    {
+      icon: Monitor,
+      label: 'TVBox',
+      href: '/tvbox',
     },
   ]);
 

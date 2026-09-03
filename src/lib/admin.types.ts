@@ -29,6 +29,9 @@ export interface AdminConfig {
       enabledApis?: string[]; // 优先级高于tags限制
       tags?: string[]; // 多 tags 取并集限制
       createdAt?: number; // 用户创建时间（时间戳，播放统计使用）
+      tvboxToken?: string; // 用户专属的 TVBox Token
+      tvboxEnabledSources?: string[]; // 该用户可访问的视频源（留空=所有源）
+      showAdultContent?: boolean; // 是否允许该用户访问成人内容源
     }[];
     Tags?: {
       name: string;
@@ -60,6 +63,14 @@ export interface AdminConfig {
     channelNumber?: number;
     disabled?: boolean;
   }[];
+  TVBoxSecurityConfig?: {
+    enableAuth: boolean; // 是否启用Token验证
+    token: string; // 访问Token
+    enableIpWhitelist: boolean; // 是否启用IP白名单
+    allowedIPs: string[]; // 允许的IP地址列表
+    enableRateLimit: boolean; // 是否启用频率限制
+    rateLimit: number; // 每分钟允许的请求次数
+  };
 }
 
 export interface AdminConfigResult {

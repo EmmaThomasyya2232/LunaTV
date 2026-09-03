@@ -117,6 +117,12 @@ function handleAuthFailure(
 
 // 判断是否需要跳过认证的路径
 function shouldSkipAuth(pathname: string): boolean {
+  // TVBox 公开端点（客户端使用 token 自行鉴权，不走 Cookie 认证）
+  // 注意：/api/tvbox-config 需要登录，不放行
+  if (pathname === '/api/tvbox' || pathname.startsWith('/api/tvbox/')) {
+    return true;
+  }
+
   const skipPaths = [
     '/_next',
     '/favicon.ico',
@@ -133,6 +139,6 @@ function shouldSkipAuth(pathname: string): boolean {
 // 配置middleware匹配规则
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|login|warning|api/login|api/register|api/logout|api/cron|api/server-config).*)',
+    '/((?!_next/static|_next/image|favicon.ico|login|register|warning|api/login|api/register|api/logout|api/cron|api/server-config).*)',
   ],
 };

@@ -843,7 +843,8 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                             timer: 2000,
                           });
                         } else {
-                          throw new Error('更新配置失败');
+                          const data = await response.json().catch(() => null);
+                          throw new Error((data as any)?.error || '更新配置失败');
                         }
                       } catch (err) {
                         showAlert({
@@ -911,7 +912,8 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                               timer: 2000,
                             });
                           } else {
-                            throw new Error('更新失败');
+                            const data = await response.json().catch(() => null);
+                            throw new Error((data as any)?.error || '更新失败');
                           }
                         } catch (err) {
                           showAlert({
@@ -976,7 +978,8 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                             timer: 2000,
                           });
                         } else {
-                          throw new Error('更新失败');
+                          const data = await response.json().catch(() => null);
+                          throw new Error((data as any)?.error || '更新失败');
                         }
                       } catch (err) {
                         showAlert({

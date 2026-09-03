@@ -64,7 +64,11 @@ async function generateAuthCookie(
     authData.timestamp = Date.now(); // 添加时间戳防重放攻击
   }
 
-  return encodeURIComponent(JSON.stringify(authData));
+  // 注意：这里返回原始 JSON 字符串，由 cookies.set 统一进行一次 URL 编码。
+  // 之前在这里先 encodeURIComponent、cookies.set 再编码一次，会导致 Cookie 双重编码，
+  // 服务端 getAuthInfoFromCookie 单次解码后仍是编码串，JSON.parse 失败，
+  // 进而引发 401/403（如管理面板配置更新失败）。
+  return JSON.stringify(authData);
 }
 
 export async function POST(req: NextRequest) {

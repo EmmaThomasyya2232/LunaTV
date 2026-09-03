@@ -64,7 +64,9 @@ async function generateAuthCookie(
     authData.timestamp = Date.now(); // 添加时间戳防重放攻击
   }
 
-  return encodeURIComponent(JSON.stringify(authData));
+  // 注意：这里返回原始 JSON 字符串，由 cookies.set 统一进行一次 URL 编码，
+  // 避免与 login 路由同样的 Cookie 双重编码问题（详见 login/route.ts 注释）。
+  return JSON.stringify(authData);
 }
 
 export async function POST(req: NextRequest) {

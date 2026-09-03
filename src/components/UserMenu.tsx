@@ -9,6 +9,7 @@ import {
   ExternalLink,
   KeyRound,
   LogOut,
+  Monitor,
   Settings,
   Shield,
   User,
@@ -262,6 +263,11 @@ export const UserMenu: React.FC = () => {
   const handlePlayStats = () => {
     setIsOpen(false);
     router.push('/play-stats');
+  };
+
+  const handleTVBox = () => {
+    setIsOpen(false);
+    router.push('/tvbox');
   };
 
   const handleChangePassword = () => {
@@ -542,6 +548,15 @@ export const UserMenu: React.FC = () => {
           >
             <BarChart2 className='w-4 h-4 text-gray-500 dark:text-gray-400' />
             <span className='font-medium'>播放统计</span>
+          </button>
+
+          {/* TVBox 按钮 */}
+          <button
+            onClick={handleTVBox}
+            className='w-full px-3 py-2 text-left flex items-center gap-2.5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm'
+          >
+            <Monitor className='w-4 h-4 text-gray-500 dark:text-gray-400' />
+            <span className='font-medium'>TVBox</span>
           </button>
 
           {/* 修改密码按钮 */}

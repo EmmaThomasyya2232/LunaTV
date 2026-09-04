@@ -348,6 +348,18 @@ dockge/komodo 等 docker compose UI 也有自动更新功能
 | NEXT_PUBLIC_DOUBAN_IMAGE_PROXY      | 自定义豆瓣图片代理 URL   | url prefix               | (空)                                                                                                                       |
 | NEXT_PUBLIC_DISABLE_YELLOW_FILTER   | 关闭色情内容过滤         | true/false               | false                                                                                                                      |
 | NEXT_PUBLIC_FLUID_SEARCH            | 是否开启搜索接口流式输出 | true/ false              | true                                                                                                                       |
+| AI_API_KEY                          | AI 服务访问密钥          | 任意字符串               | 空，启用 AI 时必填                                                                                                         |
+| AI_BASE_URL                         | AI 服务默认地址          | OpenAI 兼容 URL          | 空                                                                                                                         |
+| AI_MODEL                            | AI 默认模型              | 代理服务支持的模型名     | gpt-5-mini                                                                                                                 |
+
+### AI 智能助手
+
+AI 智能助手仅向登录用户显示，可连接 [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) 等兼容 OpenAI Chat Completions API 的服务。
+
+1. 使用站长或管理员账号打开“管理员设置 - AI 智能助手”，输入 API Key、地址、模型、系统提示词和最大生成 Token，再启用功能。密钥会加密保存到 Kvrocks，且不会返回给浏览器。
+2. 可选设置 `AI_API_KEY` 作为容器环境变量；它会优先于后台保存的密钥。首次启动还可通过 `AI_BASE_URL` 和 `AI_MODEL` 提供默认值，例如 `AI_BASE_URL=http://cli-proxy-api:8317/v1`。
+3. 需要替换密钥时直接填写新值并保存；需要移除后台保存的密钥时，勾选“移除已保存的密钥”。
+4. 使用“测试连接”读取代理暴露的模型列表。模型名由 CLIProxyAPI 决定，可填写其提供的 GPT-5 或 o 系列模型。
 
 NEXT_PUBLIC_DOUBAN_PROXY_TYPE 选项解释：
 

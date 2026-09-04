@@ -4,8 +4,19 @@ import { NextRequest, NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+function normalizeAbsoluteBaseUrl(value: string): string {
+  const trimmed = value.trim().replace(/\/+$/, '');
+  if (!/^https?:\/\//i.test(trimmed)) return '';
+
+  try {
+    return new URL(trimmed).toString().replace(/\/$/, '');
+  } catch {
+    return '';
+  }
+}
+
 function getBaseUrl(req: NextRequest): string {
-  const envBase = (process.env.SITE_BASE || '').trim().replace(/\/$/, '');
+  const envBase = normalizeAbsoluteBaseUrl(process.env.SITE_BASE || '');
   if (envBase) return envBase;
   const proto = (req.headers.get('x-forwarded-proto') || 'https')
     .split(',')[0]
@@ -18,7 +29,7 @@ function getBaseUrl(req: NextRequest): string {
     .split(',')[0]
     .trim();
   if (!host) return '';
-  return `${proto}://${host}`;
+  return normalizeAbsoluteBaseUrl(`${proto}://${host}`);
 }
 
 function isPrivateHost(urlStr: string): boolean {

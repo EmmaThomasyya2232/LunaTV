@@ -28,9 +28,21 @@ export async function GET(request: NextRequest) {
 
   try {
     const config = await getConfig();
+    const configForClient: AdminConfig = {
+      ...config,
+      AIRecommend: config.AIRecommend
+        ? {
+            ...config.AIRecommend,
+            apiKeyEncrypted: undefined,
+            apiKeyConfigured: Boolean(
+              process.env.AI_API_KEY || config.AIRecommend.apiKeyEncrypted
+            ),
+          }
+        : config.AIRecommend,
+    };
     const result: AdminConfigResult = {
       Role: 'owner',
-      Config: config,
+      Config: configForClient,
     };
     if (username === process.env.USERNAME) {
       result.Role = 'owner';
@@ -105,7 +117,8 @@ export async function POST(request: NextRequest) {
       { success: true },
       {
         headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Cache-Control':
+            'no-store, no-cache, must-revalidate, proxy-revalidate',
           Pragma: 'no-cache',
           Expires: '0',
         },

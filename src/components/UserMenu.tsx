@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ExternalLink,
   KeyRound,
+  LogIn,
   LogOut,
   Monitor,
   Settings,
@@ -15,6 +16,7 @@ import {
   User,
   X,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -34,6 +36,7 @@ export const UserMenu: React.FC = () => {
   const [authInfo, setAuthInfo] = useState<AuthInfo | null>(null);
   const [storageType, setStorageType] = useState<string>('localstorage');
   const [mounted, setMounted] = useState(false);
+  const [hasResolvedAuth, setHasResolvedAuth] = useState(false);
 
   // Body 滚动锁定 - 使用 overflow 方式避免布局问题
   useEffect(() => {
@@ -113,6 +116,7 @@ export const UserMenu: React.FC = () => {
     if (typeof window !== 'undefined') {
       const auth = getAuthInfoFromBrowserCookie();
       setAuthInfo(auth);
+      setHasResolvedAuth(true);
 
       const type =
         (window as any).RUNTIME_CONFIG?.STORAGE_TYPE || 'localstorage';
@@ -1089,6 +1093,22 @@ export const UserMenu: React.FC = () => {
       </div>
     </>
   );
+
+  if (!hasResolvedAuth) {
+    return <div className='h-10 w-10' aria-hidden='true' />;
+  }
+
+  if (!authInfo) {
+    return (
+      <Link
+        href='/login'
+        className='inline-flex h-10 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-200/50 dark:text-gray-300 dark:hover:bg-gray-700/50'
+      >
+        <LogIn className='h-4 w-4' aria-hidden='true' />
+        <span className='hidden sm:inline'>登录</span>
+      </Link>
+    );
+  }
 
   return (
     <>

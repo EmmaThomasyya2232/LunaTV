@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthInfoFromCookie } from '@/lib/auth';
 import { getConfig } from '@/lib/config';
 import { db } from '@/lib/db';
+import { ONLINE_PRESENCE_WINDOW_MS } from '@/lib/online';
 import { PlayRecord } from '@/lib/types';
 
 // 导出类型供页面组件使用
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
         (u) => u.username === username
       );
       if (!userEntry || userEntry.role !== 'admin' || userEntry.banned) {
-        return NextResponse.json({ error: '权限不足' }, { status: 401 });
+        return NextResponse.json({ error: '权限不足' }, { status: 403 });
       }
       _operatorRole = 'admin';
     }
@@ -318,9 +319,13 @@ export async function GET(request: NextRequest) {
       monthly: userStats.filter((user) => user.lastLoginTime >= thirtyDaysAgo)
         .length,
     };
+    const onlineUsers = await storage.getOnlineUserCount(
+      now.getTime() - ONLINE_PRESENCE_WINDOW_MS
+    );
 
     const result = {
       totalUsers: allUsers.length,
+      onlineUsers,
       totalWatchTime,
       totalPlays,
       avgWatchTimePerUser:

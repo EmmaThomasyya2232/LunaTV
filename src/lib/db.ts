@@ -298,6 +298,29 @@ export class DbManager {
     };
   }
 
+  async touchOnlineSession(
+    userName: string,
+    sessionId: string,
+    timestamp = Date.now()
+  ): Promise<void> {
+    if (typeof (this.storage as any).touchOnlineSession === 'function') {
+      await (this.storage as any).touchOnlineSession(
+        userName,
+        sessionId,
+        timestamp
+      );
+      return;
+    }
+    throw new Error('当前存储类型不支持在线状态统计');
+  }
+
+  async getOnlineUserCount(since: number): Promise<number> {
+    if (typeof (this.storage as any).getOnlineUserCount === 'function') {
+      return (this.storage as any).getOnlineUserCount(since);
+    }
+    throw new Error('当前存储类型不支持在线状态统计');
+  }
+
   async getContentStats(limit = 10): Promise<ContentStat[]> {
     if (typeof (this.storage as any).getContentStats === 'function') {
       return (this.storage as any).getContentStats(limit);

@@ -1,3 +1,35 @@
+export type HomeAdvertisementAudience = 'all' | 'loggedIn';
+
+export type HomeAdvertisementDevice = 'all' | 'desktop' | 'mobile';
+
+export interface HomeAdvertisement {
+  id: string;
+  enabled: boolean;
+  title: string;
+  description: string;
+  imageUrl: string;
+  linkUrl: string;
+  audience: HomeAdvertisementAudience;
+  device: HomeAdvertisementDevice;
+  startAt?: number;
+  endAt?: number;
+}
+
+export interface HomeAdsConfig {
+  enabled: boolean;
+  items: HomeAdvertisement[];
+}
+
+export interface AIRecommendConfig {
+  enabled: boolean;
+  baseUrl: string;
+  model: string;
+  systemPrompt: string;
+  maxCompletionTokens: number;
+  apiKeyEncrypted?: string;
+  apiKeyConfigured?: boolean;
+}
+
 export interface AdminConfig {
   ConfigSubscribtion: {
     URL: string;
@@ -56,13 +88,15 @@ export interface AdminConfig {
   LiveConfig?: {
     key: string;
     name: string;
-    url: string;  // m3u 地址
+    url: string; // m3u 地址
     ua?: string;
     epg?: string; // 节目单
     from: 'config' | 'custom';
     channelNumber?: number;
     disabled?: boolean;
   }[];
+  HomeAds?: HomeAdsConfig;
+  AIRecommend?: AIRecommendConfig;
   TVBoxSecurityConfig?: {
     enableAuth: boolean; // 是否启用Token验证
     token: string; // 访问Token

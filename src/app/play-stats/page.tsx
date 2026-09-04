@@ -218,8 +218,9 @@ const PlayStatsPage: React.FC = () => {
       console.log('开始获取管理员统计数据...');
       const response = await fetch('/api/admin/play-stats');
 
-      if (response.status === 401) {
-        router.push('/login');
+      if (response.status === 403) {
+        setIsAdmin(false);
+        setActiveTab('personal');
         return;
       }
 
@@ -244,11 +245,6 @@ const PlayStatsPage: React.FC = () => {
     try {
       console.log('开始获取用户个人统计数据...');
       const response = await fetch('/api/user/my-stats');
-
-      if (response.status === 401) {
-        router.push('/login');
-        return;
-      }
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -288,8 +284,6 @@ const PlayStatsPage: React.FC = () => {
     console.log('fetchStats 完成');
   }, [isAdmin, fetchAdminStats, fetchUserStats]);
 
-
-
   // 处理刷新按钮点击
   const handleRefreshClick = async () => {
     console.log('刷新按钮被点击');
@@ -299,7 +293,6 @@ const PlayStatsPage: React.FC = () => {
       // 清除追番更新缓存
       localStorage.removeItem('moontv_watching_updates');
       localStorage.removeItem('moontv_last_update_check');
-
 
       console.log('已清除所有localStorage缓存');
 
@@ -314,7 +307,6 @@ const PlayStatsPage: React.FC = () => {
       // 重新获取 watchingUpdates
       const details = getDetailedWatchingUpdates();
       setWatchingUpdates(details);
-
     } catch (error) {
       console.error('刷新数据失败:', error);
     } finally {
@@ -370,7 +362,6 @@ const PlayStatsPage: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authInfo]); // ✅ 只在 authInfo 变化时调用
-
 
   // 追番更新检查
   useEffect(() => {
@@ -721,13 +712,21 @@ const PlayStatsPage: React.FC = () => {
             /* 全站统计内容 */
             <>
               {/* 全站统计概览 */}
-              <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-7 gap-4 mb-8'>
+              <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-8 gap-4 mb-8'>
                 <div className='p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800'>
                   <div className='text-2xl font-bold text-blue-800 dark:text-blue-300'>
                     {statsData.totalUsers}
                   </div>
                   <div className='text-sm text-blue-600 dark:text-blue-400'>
                     总用户数
+                  </div>
+                </div>
+                <div className='p-4 bg-teal-50 dark:bg-teal-900/20 rounded-lg border border-teal-200 dark:border-teal-800'>
+                  <div className='text-2xl font-bold text-teal-800 dark:text-teal-300'>
+                    {statsData.onlineUsers}
+                  </div>
+                  <div className='text-sm text-teal-600 dark:text-teal-400'>
+                    当前在线用户
                   </div>
                 </div>
                 <div className='p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800'>

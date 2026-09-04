@@ -268,6 +268,28 @@ export class UpstashRedisStorage implements IStorage {
     return ensureStringArray(members as any[]);
   }
 
+  async touchOnlineSession(
+    userName: string,
+    sessionId: string,
+    timestamp: number
+  ): Promise<void> {
+    const member = `${encodeURIComponent(userName)}:${sessionId}`;
+    await withRetry(() =>
+      this.client.zadd('sys:online:sessions', { score: timestamp, member })
+    );
+  }
+
+  async getOnlineUserCount(since: number): Promise<number> {
+    const key = 'sys:online:sessions';
+    await withRetry(() => this.client.zremrangebyscore(key, 0, since - 1));
+    const sessions = (await withRetry(() =>
+      this.client.zrange(key, since, '+inf', { byScore: true })
+    )) as string[];
+    return new Set(
+      sessions.map((session) => decodeURIComponent(session.split(':', 1)[0]))
+    ).size;
+  }
+
   // ---------- 管理员配置 ----------
   private adminConfigKey() {
     return 'admin:config';

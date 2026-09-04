@@ -6,6 +6,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
+import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
+
 interface BannerItem {
   id: string | number;
   title: string;
@@ -33,6 +35,7 @@ export default function HeroBanner({
 }: HeroBannerProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   // 过渡锁使用 ref 而非 state：
   // state 会因闭包过期导致自动轮播卡死——切换幻灯片时 effect 重建的
   // setInterval 捕获的是过渡中的 isTransitioning=true（state 不在依赖里，
@@ -41,6 +44,10 @@ export default function HeroBanner({
   const isTransitioningRef = useRef(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  useEffect(() => {
+    setIsAuthenticated(Boolean(getAuthInfoFromBrowserCookie()));
+  }, []);
 
   // 处理图片 URL，使用代理绕过防盗链
   const getProxiedImageUrl = (url: string) => {
@@ -134,7 +141,6 @@ export default function HeroBanner({
   }
 
   const currentItem = items[currentIndex];
-  const imageUrl = currentItem.backdrop || currentItem.poster;
 
   return (
     <div
@@ -169,9 +175,13 @@ export default function HeroBanner({
               }`}
             >
               {/* 噪点纹理 */}
-              <div className='absolute inset-0 opacity-10' style={{
-                backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' /%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\' /%3E%3C/svg%3E")',
-              }}></div>
+              <div
+                className='absolute inset-0 opacity-10'
+                style={{
+                  backgroundImage:
+                    "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' /%3E%3C/svg%3E\")",
+                }}
+              ></div>
             </div>
           );
         })}
@@ -185,7 +195,9 @@ export default function HeroBanner({
             <div
               key={item.id}
               className={`transition-opacity duration-500 ease-in-out ${
-                index === currentIndex ? 'opacity-100' : 'opacity-0 absolute inset-0'
+                index === currentIndex
+                  ? 'opacity-100'
+                  : 'opacity-0 absolute inset-0'
               }`}
             >
               <Image
@@ -196,7 +208,7 @@ export default function HeroBanner({
                 className='w-40 sm:w-48 md:w-40 lg:w-48 h-auto rounded-xl shadow-2xl ring-4 ring-white/30'
                 priority={index === 0}
                 quality={70}
-                sizes="(max-width: 640px) 160px, (max-width: 768px) 192px, (max-width: 1024px) 160px, 192px"
+                sizes='(max-width: 640px) 160px, (max-width: 768px) 192px, (max-width: 1024px) 160px, 192px'
               />
             </div>
           ))}
@@ -212,21 +224,31 @@ export default function HeroBanner({
           {/* 元数据 */}
           <div className='flex items-center justify-center md:justify-start gap-2 sm:gap-3 text-xs sm:text-sm shrink-0 flex-wrap'>
             {currentItem.year && (
-              <span className='text-white/90 font-medium'>{currentItem.year}</span>
+              <span className='text-white/90 font-medium'>
+                {currentItem.year}
+              </span>
             )}
             {currentItem.rate && (
               <div className='flex items-center gap-1 px-2 py-1 bg-white/20 backdrop-blur-sm rounded'>
                 <span className='text-yellow-400'>★</span>
-                <span className='text-white font-semibold'>{currentItem.rate}</span>
+                <span className='text-white font-semibold'>
+                  {currentItem.rate}
+                </span>
               </div>
             )}
             {currentItem.type && (
               <span className='px-2 py-1 bg-white/20 backdrop-blur-sm rounded text-white/90'>
-                {currentItem.type === 'movie' ? '电影' :
-                 currentItem.type === 'tv' ? '剧集' :
-                 currentItem.type === 'variety' ? '综艺' :
-                 currentItem.type === 'shortdrama' ? '短剧' :
-                 currentItem.type === 'anime' ? '动漫' : '剧集'}
+                {currentItem.type === 'movie'
+                  ? '电影'
+                  : currentItem.type === 'tv'
+                  ? '剧集'
+                  : currentItem.type === 'variety'
+                  ? '综艺'
+                  : currentItem.type === 'shortdrama'
+                  ? '短剧'
+                  : currentItem.type === 'anime'
+                  ? '动漫'
+                  : '剧集'}
               </span>
             )}
           </div>
@@ -242,9 +264,39 @@ export default function HeroBanner({
           <div className='flex flex-wrap justify-center md:justify-start gap-2 sm:gap-3 shrink-0'>
             <Link
               href={
-                currentItem.type === 'shortdrama'
-                  ? `/play?title=${encodeURIComponent(currentItem.title)}&shortdrama_id=${currentItem.id}`
-                  : `/play?title=${encodeURIComponent(currentItem.title)}${currentItem.year ? `&year=${currentItem.year}` : ''}${currentItem.douban_id ? `&douban_id=${currentItem.douban_id}` : ''}${currentItem.type ? `&stype=${currentItem.type}` : ''}`
+                isAuthenticated
+                  ? currentItem.type === 'shortdrama'
+                    ? `/play?title=${encodeURIComponent(
+                        currentItem.title
+                      )}&shortdrama_id=${currentItem.id}`
+                    : `/play?title=${encodeURIComponent(currentItem.title)}${
+                        currentItem.year ? `&year=${currentItem.year}` : ''
+                      }${
+                        currentItem.douban_id
+                          ? `&douban_id=${currentItem.douban_id}`
+                          : ''
+                      }${currentItem.type ? `&stype=${currentItem.type}` : ''}`
+                  : `/detail?title=${encodeURIComponent(currentItem.title)}${
+                      currentItem.poster
+                        ? `&poster=${encodeURIComponent(currentItem.poster)}`
+                        : ''
+                    }${
+                      currentItem.year
+                        ? `&year=${encodeURIComponent(currentItem.year)}`
+                        : ''
+                    }${
+                      currentItem.rate
+                        ? `&rate=${encodeURIComponent(currentItem.rate)}`
+                        : ''
+                    }${
+                      currentItem.douban_id
+                        ? `&douban_id=${currentItem.douban_id}`
+                        : ''
+                    }${
+                      currentItem.type
+                        ? `&stype=${encodeURIComponent(currentItem.type)}`
+                        : ''
+                    }`
               }
               className='flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 bg-white text-black font-semibold rounded-xl hover:bg-gray-200 transition-all transform hover:scale-105 active:scale-95 shadow-lg text-sm sm:text-base'
             >
@@ -256,7 +308,9 @@ export default function HeroBanner({
                 currentItem.type === 'shortdrama'
                   ? '/shortdrama'
                   : `/douban?type=${
-                      currentItem.type === 'variety' ? 'show' : (currentItem.type || 'movie')
+                      currentItem.type === 'variety'
+                        ? 'show'
+                        : currentItem.type || 'movie'
                     }`
               }
               className='flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 bg-white/20 backdrop-blur-sm text-white font-semibold rounded-xl hover:bg-white/30 transition-all transform hover:scale-105 active:scale-95 shadow-lg text-sm sm:text-base'

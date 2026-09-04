@@ -42,6 +42,7 @@ export interface UserPlayStat {
 // 全站播放统计数据结构
 export interface PlayStatsResult {
   totalUsers: number; // 总用户数
+  onlineUsers: number; // 当前在线用户数
   totalWatchTime: number; // 全站总观看时间
   totalPlays: number; // 全站总播放次数
   avgWatchTimePerUser: number; // 用户平均观看时长

@@ -2,6 +2,20 @@ import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
+function isAllowedImageUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return (
+      url.protocol === 'https:' &&
+      (url.hostname === 'douban.com' ||
+        url.hostname.endsWith('.douban.com') ||
+        url.hostname.endsWith('.doubanio.com'))
+    );
+  } catch {
+    return false;
+  }
+}
+
 // OrionTV 兼容接口
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -9,6 +23,13 @@ export async function GET(request: Request) {
 
   if (!imageUrl) {
     return NextResponse.json({ error: 'Missing image URL' }, { status: 400 });
+  }
+
+  if (!isAllowedImageUrl(imageUrl)) {
+    return NextResponse.json(
+      { error: 'Unsupported image URL' },
+      { status: 400 }
+    );
   }
 
   try {

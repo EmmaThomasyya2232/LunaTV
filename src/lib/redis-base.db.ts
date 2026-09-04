@@ -383,6 +383,34 @@ export abstract class BaseRedisStorage implements IStorage {
     return ensureStringArray(members as any[]);
   }
 
+  private onlineSessionsKey() {
+    return 'sys:online:sessions';
+  }
+
+  async touchOnlineSession(
+    userName: string,
+    sessionId: string,
+    timestamp: number
+  ): Promise<void> {
+    const member = `${encodeURIComponent(userName)}:${sessionId}`;
+    await this.withRetry(() =>
+      this.client.zAdd(this.onlineSessionsKey(), [
+        { score: timestamp, value: member },
+      ])
+    );
+  }
+
+  async getOnlineUserCount(since: number): Promise<number> {
+    const key = this.onlineSessionsKey();
+    await this.withRetry(() => this.client.zRemRangeByScore(key, 0, since - 1));
+    const sessions = await this.withRetry(() =>
+      this.client.zRangeByScore(key, since, '+inf')
+    );
+    return new Set(
+      sessions.map((session) => decodeURIComponent(session.split(':', 1)[0]))
+    ).size;
+  }
+
   // ---------- 管理员配置 ----------
   private adminConfigKey() {
     return 'admin:config';

@@ -123,6 +123,25 @@ function shouldSkipAuth(pathname: string): boolean {
     return true;
   }
 
+  // 访客可以浏览站点内容；播放、个人数据和管理功能仍需要登录。
+  const publicContentPaths = ['/', '/detail', '/douban', '/search'];
+  if (publicContentPaths.includes(pathname)) {
+    return true;
+  }
+
+  const publicContentApiPaths = [
+    '/api/image-proxy',
+    '/api/search',
+    '/api/search/ws',
+  ];
+  const publicContentApiPrefixes = ['/api/bangumi/', '/api/douban'];
+  if (
+    publicContentApiPaths.includes(pathname) ||
+    publicContentApiPrefixes.some((path) => pathname.startsWith(path))
+  ) {
+    return true;
+  }
+
   const skipPaths = [
     '/_next',
     '/favicon.ico',

@@ -2,7 +2,9 @@
 
 import Link from 'next/link';
 
+import AIRecommendModal from './AIRecommendModal';
 import { BackButton } from './BackButton';
+import { OnlineUserIndicator } from './OnlineUserIndicator';
 import { useSite } from './SiteProvider';
 import { ThemeToggle } from './ThemeToggle';
 import { UserMenu } from './UserMenu';
@@ -15,7 +17,7 @@ const MobileHeader = ({ showBackButton = false }: MobileHeaderProps) => {
   const { siteName } = useSite();
   return (
     <header className='md:hidden fixed top-0 left-0 right-0 z-[999] w-full bg-white/70 backdrop-blur-xl border-b border-gray-200/50 shadow-sm dark:bg-gray-900/70 dark:border-gray-700/50'>
-      <div className='h-12 flex items-center justify-between px-4'>
+      <div className='grid h-12 grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-2 px-2'>
         {/* 左侧：搜索按钮、返回按钮和设置按钮 */}
         <div className='flex items-center gap-2'>
           <Link
@@ -40,21 +42,20 @@ const MobileHeader = ({ showBackButton = false }: MobileHeaderProps) => {
           {showBackButton && <BackButton />}
         </div>
 
-        {/* 右侧按钮 */}
-        <div className='flex items-center gap-2'>
-          <ThemeToggle />
-          <UserMenu />
-        </div>
-      </div>
-
-      {/* 中间：Logo（绝对居中） */}
-      <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'>
         <Link
           href='/'
-          className='text-2xl font-bold text-green-600 tracking-tight hover:opacity-80 transition-opacity'
+          className='min-w-0 truncate text-center text-xl font-bold tracking-tight text-green-600 transition-opacity hover:opacity-80'
         >
           {siteName}
         </Link>
+
+        {/* 右侧按钮 */}
+        <div className='flex items-center justify-self-end'>
+          <OnlineUserIndicator compact />
+          <AIRecommendModal />
+          <ThemeToggle />
+          <UserMenu />
+        </div>
       </div>
     </header>
   );
